@@ -1,0 +1,21 @@
+data/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+*_pseudo.docx
+*_restored.docx
+out.docx
+edge_out.docx
+empty_out.docx
+verify_restore.py
+
+# 测试输出文件（保留 contract_sample.docx 作为示例）
+contract_pseudo.docx
+contract_restored.docx
+contract_gui_pseudo.docx
+contract_gui_restored.docx

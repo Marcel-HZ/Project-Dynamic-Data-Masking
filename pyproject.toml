@@ -1,0 +1,12 @@
+[project]
+name = "pseudo-tool"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["python-docx>=1.1.2", "PyMuPDF>=1.24.9", "jieba>=0.42.1", "cryptography>=42.0.8"]
+
+[project.scripts]
+pseudo-tool = "pseudo_tool.main:main"
+pseudo-tool-gui = "pseudo_tool.gui:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
