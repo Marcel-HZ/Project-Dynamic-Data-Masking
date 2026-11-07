@@ -37,7 +37,7 @@ class NameDetector(DetectorBase):
         hits = []
         seen = set()
         for word, flag in pseg.cut(text):
-            if flag != "nr":
+            if flag not in ("nr", "nrfg", "nrt"):
                 continue
             if not self._is_name(word):
                 continue
@@ -63,5 +63,8 @@ class NameDetector(DetectorBase):
                 seen.add(name)
                 hits.append(Hit(text=name, type="NAME"))
         return hits
+
+
+
 
 

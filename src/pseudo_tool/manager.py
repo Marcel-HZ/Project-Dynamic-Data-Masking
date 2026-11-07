@@ -55,3 +55,4 @@ class PseudonymManager:
         self.counters.clear()
         self.store.destroy()
 
+

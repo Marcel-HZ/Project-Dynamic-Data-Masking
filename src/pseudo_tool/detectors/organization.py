@@ -1,16 +1,21 @@
 from .base import DetectorBase, Hit
+from ..config import ORG_SUFFIX_MAP
 
-ORG_SUFFIXES = ["有限公司", "股份有限公司", "有限责任公司", "集团", "科技公司",
-                "事务所", "中心", "研究院", "银行", "支行", "分行", "医院",
-                "学校", "大学", "学院"]
+# build flat suffix -> subtype, longest first
+_SUFFIX_TO_TYPE = {}
+for subtype, suffixes in ORG_SUFFIX_MAP.items():
+    for suf in suffixes:
+        _SUFFIX_TO_TYPE[suf] = subtype
+_ALL_SUFFIXES = sorted(_SUFFIX_TO_TYPE.keys(), key=len, reverse=True)
 
-STOP_CHARS = set("，。；：、（）()【】[]《》<>\"\"''！？!? \t\n\r\u3000和与")
+STOP_CHARS = set("，。；：、（）()【】[]《》<>\"\"''！？!? \t\n\r\u3000")
 
 
 class OrganizationDetector(DetectorBase):
     def detect(self, text: str) -> list[Hit]:
         raw = []
-        for suffix in ORG_SUFFIXES:
+        for suffix in _ALL_SUFFIXES:
+            subtype = _SUFFIX_TO_TYPE[suffix]
             search_from = 0
             while True:
                 pos = text.find(suffix, search_from)
@@ -22,25 +27,35 @@ class OrganizationDetector(DetectorBase):
                 while i >= 0 and suffix_start - i <= 20:
                     if text[i] in STOP_CHARS:
                         break
+                    if text[i] in ("和", "与") and any(suf in text[:i+1] for suf in _ALL_SUFFIXES):
+                        break
                     i -= 1
                 candidate_start = i + 1
                 candidate = text[candidate_start:suffix_end]
                 if len(candidate) - len(suffix) < 2:
                     search_from = suffix_end
                     continue
+                if any(candidate.count(suf) > 1 for suf in _ALL_SUFFIXES):
+                    search_from = suffix_end
+                    continue
                 if candidate and candidate[0] in STOP_CHARS:
                     search_from = suffix_end
                     continue
-                raw.append(candidate)
+                raw.append((candidate, subtype, len(suffix)))
                 search_from = suffix_end
 
-        # keep candidates not contained in a longer one
+        # longest suffix priority + contained filter
+        raw.sort(key=lambda x: (-(x[2]),))
         final = []
-        for cand in raw:
-            if any(cand != other and cand in other for other in raw):
+        for cand, subtype, suf_len in raw:
+            if any(cand != other[0] and cand in other[0] for other in raw):
                 continue
-            if cand not in final:
-                final.append(cand)
+            if cand not in [f[0] for f in final]:
+                final.append((cand, subtype))
 
-        return [Hit(text=c, type="ORG") for c in final]
+        return [Hit(text=c, type=f"ORG_{st}") for c, st in final]
+
+
+
+
 

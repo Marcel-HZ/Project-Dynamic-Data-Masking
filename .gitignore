@@ -18,4 +18,5 @@ verify_restore.py
 contract_pseudo.docx
 contract_restored.docx
 contract_gui_pseudo.docx
-contract_gui_restored.docx
+contract_gui_restored.docx_data_temp/
+scripts/

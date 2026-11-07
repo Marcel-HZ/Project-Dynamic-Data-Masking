@@ -65,7 +65,7 @@ def test_address():
 def test_org():
     d = Detector()
     hits = d.detect("北京智源人工智能研究院有限公司")
-    orgs = {h.text for h in hits if h.type == "ORG"}
+    orgs = {h.text for h in hits if h.type.startswith("ORG")}
     assert any("智源人工智能研究院有限公司" in o or o == "北京智源人工智能研究院有限公司" for o in orgs)
 
 
@@ -73,7 +73,7 @@ def test_overlap():
     d = Detector()
     hits = d.detect("张三在阿里巴巴科技有限公司工作，住在杭州市西湖区文三路100号")
     names = {h.text for h in hits if h.type == "NAME"}
-    orgs = {h.text for h in hits if h.type == "ORG"}
+    orgs = {h.text for h in hits if h.type.startswith("ORG")}
     addrs = {h.text for h in hits if h.type == "ADDRESS"}
     assert "张三" in names
     assert any("阿里巴巴" in o or "科技有限公司" in o for o in orgs)
@@ -134,7 +134,7 @@ def test_no_overlap():
     d = Detector()
     hits = d.detect("张三在阿里巴巴科技有限公司工作，住杭州市西湖区文三路100号")
     names = {h.text for h in hits if h.type == "NAME"}
-    orgs = {h.text for h in hits if h.type == "ORG"}
+    orgs = {h.text for h in hits if h.type.startswith("ORG")}
     addrs = {h.text for h in hits if h.type == "ADDRESS"}
     assert "张三" in names
     assert any("阿里" in o or "科技有限公司" in o for o in orgs)
@@ -143,7 +143,7 @@ def test_no_overlap():
 def test_org_isolated():
     d = Detector()
     hits = d.detect("甲方：北京智源人工智能研究院有限公司，乙方：上海云帆数据科技有限公司")
-    orgs = [h.text for h in hits if h.type == "ORG"]
+    orgs = [h.text for h in hits if h.type.startswith("ORG")]
     assert orgs == ["北京智源人工智能研究院有限公司", "上海云帆数据科技有限公司"] or set(orgs) == {"北京智源人工智能研究院有限公司", "上海云帆数据科技有限公司"}
     for bad in ("甲方", "乙方", "，"):
         assert not any(bad in o for o in orgs)
@@ -152,14 +152,14 @@ def test_org_isolated():
 def test_org_bank():
     d = Detector()
     hits = d.detect("乙方开户行：中国工商银行上海张江支行")
-    orgs = [h.text for h in hits if h.type == "ORG"]
+    orgs = [h.text for h in hits if h.type.startswith("ORG")]
     assert "中国工商银行上海张江支行" in orgs
 
 
 def test_org_no_cross():
     d = Detector()
     hits = d.detect("北京智源人工智能研究院有限公司和上海云帆数据科技有限公司")
-    orgs = [h.text for h in hits if h.type == "ORG"]
+    orgs = [h.text for h in hits if h.type.startswith("ORG")]
     assert "北京智源人工智能研究院有限公司" in orgs
     assert "上海云帆数据科技有限公司" in orgs
     assert not any("和" in o and o.count("有限公司") > 1 for o in orgs)
@@ -178,3 +178,75 @@ def test_uscc_vs_id():
     usccs = {h.text for h in hits if h.type == "USCC"}
     assert "110101199001011234" in ids
     assert "110101199001011234" not in usccs
+
+def test_name_modern_chars():
+    d = Detector()
+    hits = d.detect("张宇皓和伍泓铮开会")
+    names = {h.text for h in hits if h.type == "NAME"}
+    assert "张宇皓" in names
+    assert "伍泓铮" in names
+
+
+def test_name_common():
+    d = Detector()
+    hits = d.detect("魏涛、李娜、王伟")
+    names = {h.text for h in hits if h.type == "NAME"}
+    assert "魏涛" in names
+    assert "李娜" in names
+    assert "王伟" in names
+
+
+def test_name_still_reject_location():
+    d = Detector()
+    hits = d.detect("北京市朝阳区")
+    names = {h.text for h in hits if h.type == "NAME"}
+    assert "北京市朝阳区" not in names
+
+def test_org_university():
+    d = Detector()
+    hits = d.detect("上海大学")
+    orgs = [h for h in hits if h.type.startswith("ORG")]
+    assert orgs and orgs[0].type == "ORG_UNIVERSITY"
+    mgr_dummy = None
+
+
+def test_org_government():
+    d = Detector()
+    hits = d.detect("全国人大法工委")
+    orgs = [h for h in hits if h.type.startswith("ORG")]
+    assert orgs and orgs[0].type == "ORG_GOVERNMENT"
+
+
+def test_org_hospital():
+    d = Detector()
+    hits = d.detect("北京协和医院")
+    orgs = [h for h in hits if h.type.startswith("ORG")]
+    assert orgs and orgs[0].type == "ORG_HOSPITAL"
+
+
+def test_org_bank2():
+    d = Detector()
+    hits = d.detect("中国工商银行上海张江支行")
+    orgs = [h for h in hits if h.type.startswith("ORG")]
+    assert orgs and orgs[0].type == "ORG_BANK"
+
+
+def test_org_company2():
+    d = Detector()
+    hits = d.detect("北京智源人工智能研究院有限公司")
+    orgs = [h for h in hits if h.type.startswith("ORG")]
+    assert orgs and orgs[0].type == "ORG_COMPANY"
+
+
+def test_org_idempotent():
+    from pseudo_tool.manager import PseudonymManager
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as td:
+        m = PseudonymManager(map_file=os.path.join(td, "m.enc"), key_file=os.path.join(td, "k.bin"))
+        a = m.get_pseudonym("上海大学", "ORG_UNIVERSITY")
+        b = m.get_pseudonym("上海大学", "ORG_UNIVERSITY")
+        assert a == b
+        assert a.startswith("某大学")
+
+
+
