@@ -24,6 +24,9 @@ class PseudonymManager:
                     pseudo = f"{real[:2]}某{n}"
                 else:
                     pseudo = f"{real[:1]}某{n}"
+            elif ptype == "PHONE" and real.startswith("0"):
+                # landline
+                pseudo = f"0571-0000{n:04d}"
             else:
                 template = PSEUDO_TEMPLATES[ptype]
                 pseudo = template.format(n=n)

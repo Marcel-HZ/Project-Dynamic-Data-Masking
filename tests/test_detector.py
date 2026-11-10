@@ -250,3 +250,63 @@ def test_org_idempotent():
 
 
 
+
+
+def test_address_not_org():
+    d = Detector()
+    hits = d.detect('宁波市镇海区文学艺术界联合会')
+    addrs = [h.text for h in hits if h.type == "ADDRESS"]
+    assert '宁波市镇海区文学艺术界联合会' not in addrs
+    hits2 = d.detect('宁波市镇海区骆驼街道民和路569号')
+    addrs2 = [h.text for h in hits2 if h.type == "ADDRESS"]
+    assert any('民和路569号' in a for a in addrs2)
+
+
+def test_org_consistency():
+    from pseudo_tool.manager import PseudonymManager
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as td:
+        m = PseudonymManager(map_file=os.path.join(td, 'm.enc'), key_file=os.path.join(td, 'k.bin'))
+        # Same entity should get same pseudonym
+        pseudo1 = m.get_pseudonym('宁波越阡影视文化传媒有限公司', 'ORG_COMPANY')
+        pseudo2 = m.get_pseudonym('宁波越阡影视文化传媒有限公司', 'ORG_COMPANY')
+        assert pseudo1 == pseudo2
+        # Test across different types
+        pseudo3 = m.get_pseudonym('宁波越阡影视文化传媒有限公司', 'ORG_COMPANY')
+        assert pseudo1 == pseudo3
+
+
+def test_phone_landline():
+    from pseudo_tool.manager import PseudonymManager
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as td:
+        m = PseudonymManager(map_file=os.path.join(td, 'm.enc'), key_file=os.path.join(td, 'k.bin'))
+        d = Detector()
+        hits = d.detect('0574-89389650')
+        phones = [h.text for h in hits if h.type == 'PHONE']
+        assert '0574-89389650' in phones
+        pseudo = m.get_pseudonym('0574-89389650', 'PHONE')
+        assert pseudo.startswith('0571-')
+        hits2 = d.detect('13800001234')
+        phones2 = [h.text for h in hits2 if h.type == 'PHONE']
+        assert '13800001234' in phones2
+        pseudo2 = m.get_pseudonym('13800001234', 'PHONE')
+        assert pseudo2.startswith('1380000')
+
+
+def test_name_not_capital_number():
+    d = Detector()
+    hits = d.detect('人民币伍万圆整')
+    names = {h.text for h in hits if h.type == 'NAME'}
+    assert '伍万' not in names
+    hits2 = d.detect('伍泓铮')
+    names2 = {h.text for h in hits2 if h.type == 'NAME'}
+    assert '伍泓铮' in names2
+
+
+def test_org_whitelist():
+    d = Detector()
+    hits = d.detect('依法向人民法院提起诉讼')
+    orgs = [h for h in hits if h.type.startswith('ORG')]
+    for o in orgs:
+        assert '人民法院' not in o.text

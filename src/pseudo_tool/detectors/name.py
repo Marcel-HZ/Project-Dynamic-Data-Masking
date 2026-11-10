@@ -2,7 +2,7 @@ import jieba.posseg as pseg
 import re
 
 from .base import DetectorBase, Hit
-from ..config import SURNAMES, COMPOUND_SURNAMES, NAME_TAIL_CHARS
+from ..config import SURNAMES, COMPOUND_SURNAMES, NAME_TAIL_CHARS, CAPITAL_NUMBER_CHARS
 
 ADDRESS_CHARS = set("省市县镇乡村路街道德巷号栋室楼层座园苑府庭湾里弄")
 ORG_SUFFIXES = ["支行", "分行", "总行", "银行", "公司", "集团", "厂", "店", "馆", "院", "校", "所", "局", "处", "科", "部", "委", "办", "中心", "医院", "学校", "大学", "学院", "事务所", "研究院", "营业部", "办事处", "管委会", "工作室", "门市部"]
@@ -49,6 +49,9 @@ class NameDetector(DetectorBase):
             if any(suf in right for suf in ORG_SUFFIXES):
                 continue
             if word in overlaps:
+                continue
+            # skip capital numbers like "伍万圆整"
+            if all(ch in CAPITAL_NUMBER_CHARS for ch in word):
                 continue
             if word in seen:
                 continue
