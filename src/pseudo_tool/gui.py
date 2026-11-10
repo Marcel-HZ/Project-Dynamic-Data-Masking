@@ -62,9 +62,15 @@ class App:
 
     def browse_output(self):
         inp = self.inp_var.get()
-        ext = os.path.splitext(inp)[1].lower() if inp else ".docx"
-        default_ext = ext if ext in (".docx", ".pdf") else ".docx"
-        path = filedialog.asksaveasfilename(defaultextension=default_ext, filetypes=[("Word", "*.docx"), ("PDF", "*.pdf")])
+        if inp:
+            in_dir = os.path.dirname(inp)
+            in_name = os.path.basename(inp)
+            base, ext = os.path.splitext(in_name)
+            default_name = f"{base}_pseudo{ext}" if self.mode.get() == "anonymize" else f"{base}_restored{ext}"
+            initial_file = os.path.join(in_dir, default_name)
+        else:
+            initial_file = ""
+        path = filedialog.asksaveasfilename(initialfile=initial_file, defaultextension=ext if inp else ".docx", filetypes=[("Word", "*.docx"), ("PDF", "*.pdf")])
         if path:
             self.out_var.set(path)
 
